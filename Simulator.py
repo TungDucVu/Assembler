@@ -1,302 +1,268 @@
 import sys
- ##A = sys.stdin.readlines()
-file_path = input("Enter the file path: ")  # Input the file path
-A = []
-B = []
-with open(file_path, 'r') as file:
-    a = file.readlines()
-    #B.append(a.rstrip() for line in a)
-    B.extend(line.rstrip() for line in a)
-##B = [i.rstrip() for i in A]
-dictreg={"R0":0,"R1":0,"R2":0,"R3":0,"R4":0,"R5":0,"R6":0,"V":0,"L":0,"G":0,"E":0}
-opreg={"R0":"000","R1":"001","R2":"010","R3":"011","R4":"100","R5":"101","R6":"110","FLAGS":"111"}
-variables=dict()
-def regval(t):
-    s=len(t)
-    while(s<16):
-        t="0"+t
-        s=len(t)
-    return t
-def printfunc(i,over):
-    pstr=""
-    i=str(bin(i))[2:]
-    s=len(i)
-    while(s<8):
-        i="0"+i
-        s=len(i)
-    pstr+=i+" " 
-    k=0  
-    f=0
-    for i in dictreg.values():
-        t=str(bin(i))[2:]
-        if(k<7):
-            t=regval(t)
-            pstr+=t+" "
-        else:
-            if(over==1):
-                pstr+="0000000000001000"
-            elif(i==1):
-                if(dictreg["E"]==1):
-                    pstr+="0000000000000001"
-                elif(dictreg["L"]==1):
-                    pstr+="0000000000000100"
-                elif(dictreg["G"]==1):
-                    pstr+="0000000000000010"  
-                f=1
-        k+=1
-    if(f==0):
-        pstr+="0000000000000000"
-    #pstr=pstr[:-1]
-    print(pstr)
-def convert(imm):
-    imm=imm[::-1]
-    val=0
-    k=0
-    for i in imm:
-        if(i=='0'):
-            pass
-        else:
-            val+=2**k
-        k+=1
-    return val
-    #k=int(imm)
-def typeA(str1):
-    s1=str1[:5]
-    x=str1[7:10]
-    y=str1[10:13]
-    z=str1[13:]
-    for key, value in opreg.items():
-        if x == value:
-            x=key
-        if y==value:
-            y=key
-        if z==value:
-            z=key
-    a=dictreg[x]
-    b=dictreg[y]
-    c=dictreg[z]
-    check=2**16-1
-    if(s1=='10000'):
-        solve=b+c
-        over=0
-        if(solve>check):
-            over=1
-            dictreg["E"]=0
-            dictreg["G"]=0
-            dictreg["L"]=0
-            dictreg["V"]=1
-            b=str(bin(solve))[2:]
-            b=b[::-1]
-            b=b[:16]
-            b=b[::-1]
-            solve=convert(b)
-        dictreg[x]=solve
-        return over
-    elif(s1=='10001'):
-        solve=b-c
-        if(solve<0):
-            solve=0
-        dictreg[x]=solve
-    elif(s1=='10110'):
-        solve=b*c
-        over=0
-        if(solve>check):
-            over=1
-            dictreg["E"]=0
-            dictreg["G"]=0
-            dictreg["L"]=0
-            dictreg["V"]=1
-            b=str(bin(solve))[2:]
-            b=b[::-1]
-            b=b[:16]
-            b=b[::-1]
-            solve=convert(b)
-        dictreg[x]=solve
-        return over
-    elif(s1=='11010'):
-        solve=b^c
-        dictreg[x]=solve
-    elif(s1=='11011'):
-        solve=b|c
-        dictreg[x]=solve
-    elif(s1=='11100'):
-        solve=b&c
-        dictreg[x]=solve
-def typeB(str1):
-    s1=str1[:5]
-    reg=str1[5:8]
-    imm=str1[8:]
-    val=convert(imm)
-    for key, value in opreg.items():
-        if reg==value:
-            reg=key
-    if(s1=='10010'):
-        dictreg[reg]=val
-    if(s1=='11001'):
-        k=dictreg[reg]
-        k=k<<val
-        dictreg[reg]=k
-    if(s1=='11000'):
-        k=dictreg[reg]
-        k=k>>val
-        dictreg[reg]=k
-def typeC(str1):
-    s1=str1[:5]
-    x=str1[10:13]
-    y=str1[13:]
-    for key, value in opreg.items():
-        if x == value:
-            x=key
-        if y==value:
-            y=key
-    if(s1=='10011'):
-        if(y=='111'):
-            if(dictreg["V"]==1):
-                dictreg[x]=1
-            elif(dictreg["L"]==1):
-                dictreg[x]=1
-            if(dictreg["G"]==1):
-                dictreg[x]=1
-            if(dictreg["E"]==1):
-                dictreg[x]=1
-            else:
-               dictreg[x]=0
-        else: 
-            val=dictreg[y]
-            dictreg[x]=val
-    if(s1=='10111'):
-        x1=dictreg[x]
-        y1=dictreg[y]
-        x2=x1//y1
-        y2=x1%y1
-        dictreg[x]=x2
-        dictreg[y]=y2
-    if(s1=='11101'):
-        k=dictreg[x]
-        k=str(bin(k))[2:]
-        str2=""
-        for i in k:
-            if(i=='1'):
-                str2+="0"
-            else:
-                str2+="1"
-        val=convert(str2)
-        dictreg[y]=val
-    if(s1=='11110'):
-        a=dictreg[x]
-        b=dictreg[y]
-        if(a==b):
-            dictreg["E"]=1
-            dictreg["G"]=0
-            dictreg["L"]=0
-            dictreg["V"]=0
-        elif(a<b):
-            dictreg["L"]=1
-            dictreg["G"]=0
-            dictreg["E"]=0
-            dictreg["V"]=0
-        elif(a>b):
-            dictreg["G"]=1
-            dictreg["E"]=0
-            dictreg["L"]=0
-            dictreg["V"]=0
-def typeD(str1):
-    s1=str1[:5]
-    reg=str1[5:8]
-    for key, value in opreg.items():
-        if reg == value:
-            reg=key
-    addr=str1[8:]
-    val=dictreg[reg]
-    if(s1=='10101'):
-        
+import os
 
-        variables[addr]=val
-        
-    if(s1=='10100'):
-        if addr not in variables.keys():
-            variables[addr] = 0
-        
-        memval=variables[addr]
-        dictreg[reg]=memval
-def typeE(str1,i):
-    s1=str1[:5]
-    addr=str1[8:]
-    addr=convert(addr)
-    #print(addr)
-    if(s1=='11111'):
-        return addr+1
-    if(s1=='01100'):
-        l=dictreg["L"]
-        if(l==1):
-            return addr+1
-    if(s1=='01101'):
-        g=dictreg["G"]
-        if(g==1):
-            #print(addr)
-            return addr+1
-    if(s1=='01111'):
-        e=dictreg["E"]
-        if(e==1):
-            return addr+1
-    return i+2
-i=0
-E = ['01100','01101','01111']
-while(i<len(B)-1):
-    over=0
-    t=i
-    #print(i)
-    #print(dictreg)
-    str1=B[i]
-    s1=str1[:5]
-    if s1 not in E:
-        dictreg["E"]=0
-        dictreg["G"]=0
-        dictreg["L"]=0
-        dictreg["V"]=0
-    if(s1=='10000' or s1=='10001' or s1=='10110' or s1=='11010' or s1=='11011' or s1=='11100'):
-        over=typeA(str1)
-    if(s1=='10010' or s1=='11001' or s1=='11000'):
-        typeB(str1)
-    if(s1=='10011' or s1=='10111' or s1=='11101' or s1=='11110'):
-        typeC(str1)
-    if(s1=='10101' or s1=='10100'):
-        typeD(str1)    
-    if(s1=='11111' or s1=='01100' or s1=="01101" or s1=='01111'):
-        t=typeE(str1,i)-2
-        #print(t)
-    if s1 in E:
-        dictreg["E"]=0
-        dictreg["G"]=0
-        dictreg["L"]=0
-        dictreg["V"]=0
-    printfunc(i,over)
-    i=t
-    #print(dictreg)
-    #print(variables)
-    i+=1
-over=0
-printfunc(i,over)
-#print(variables)
-final=dict()
-for key,value in variables.items():
-    val=bin(value)[2:]
-    s=len(val)
-    while(s<16):
-        val="0"+val
-        s=len(val)
-    k=int(key)
-    final[k]=val
-#print(final)
-list=final.keys()
-list=sorted(list)
-#print(list)
-j=256-len(B)-len(list)
-for i in B:
-    print(i)
-for i in list:
-    print(final[i])
-str2="0000000000000000"
-for i in range(j):
-    print(str2)
+def sext(imm):
+    if imm[0] == '0':
+        imm = '0' * (32 - len(imm)) + imm
+    else:
+        imm = '1' * (32 - len(imm)) + imm
+    return imm
 
+def dec_to_bin(num):
+    num = int(num)
+    if num >= 0:
+        s = ''.join(str((num >> i) & 1) for i in range(31, -1, -1))
+        s = '0' * (32 - len(s)) + s
+    else:
+        s = bin(num & (2**32 - 1))[2:]
+    return s
+
+def sgn_con(imm):
+    if imm[0] == '1':
+        flipped_bits = ''.join('1' if bit == '0' else '0' for bit in imm[1:])
+        return -(int(flipped_bits, 2) + 1)
+    else:
+        return int(imm, 2)
+
+def unsgn_con(imm):
+    return int(imm, 2)
+
+def beq(rs1, rs2, imm, pc):
+    rs1, rs2, imm = [sext(val) for val in (rs1, rs2, imm)]
+    rs1, rs2, imm = [sgn_con(val) for val in (rs1, rs2, imm)]
+    pc += imm if rs1 == rs2 else 4
+    return pc
+
+def bne(rs1, rs2, imm, pc):
+    rs1, rs2, imm = [sext(val) for val in (rs1, rs2, imm)]
+    rs1, rs2, imm = [sgn_con(val) for val in (rs1, rs2, imm)]
+    pc += imm if rs1 != rs2 else 4
+    return pc
+
+def bge(rs1, rs2, imm, pc):
+    rs1, rs2, imm = [sext(val) for val in (rs1, rs2, imm)]
+    rs1, rs2, imm = [sgn_con(val) for val in (rs1, rs2, imm)]
+    pc += imm if rs1 >= rs2 else 4
+    return pc
+
+def blt(rs1, rs2, imm, pc):
+    rs1, rs2, imm = [sext(val) for val in (rs1, rs2, imm)]
+    rs1, rs2, imm = [sgn_con(val) for val in (rs1, rs2, imm)]
+    pc += imm if rs1 < rs2 else 4
+    return pc
+
+def B(i, pc, r_dict):
+    imm = i[0] + i[24] + i[1:7] + i[20:24]
+    imm = sext(imm)
+    func3 = i[-15:-12]
+    rs1 = i[-20:-15]
+    rs2 = i[-25:-20]
+    operations = {
+        "000": beq,
+        "001": bne,
+        "100": blt,
+        "101": bge
+    }
+    for func_code, operation in operations.items():
+        if func3 == func_code:
+            pc = operation(r_dict[rs1], r_dict[rs2], imm, pc)
+            break
+
+    return pc
+
+def add(rd, rs1, rs2, pc, r_dict):
+    rs1 = sext(rs1)
+    rs2 = sext(rs2)
+    r_dict[rd] = dec_to_bin(rs1 + rs2)
+    return pc + 4
+
+def sub(rd, rs1, rs2, pc, r_dict):
+    r_dict[rd] = dec_to_bin(sgn_con(rs1) - sgn_con(rs2))
+    return pc + 4
+
+def slt(rd, rs1, rs2, pc, r_dict):
+    r_dict[rd] = dec_to_bin(1) if sgn_con(rs1) < sgn_con(rs2) else "0b0"
+    return pc + 4
+
+def sltu(rd, rs1, rs2, pc, r_dict):
+    r_dict[rd] = dec_to_bin(1) if rs1 < rs2 else "0b0"
+    return pc + 4
+
+def xor(rd, rs1, rs2, pc, r_dict):
+    r_dict[rd] = dec_to_bin(rs1 ^ rs2)
+    return pc + 4
+
+def sll(rd, rs1, rs2, pc, r_dict):
+    r_dict[rd] = dec_to_bin(rs1 << int(rs2[-5:], 2))
+    return pc + 4
+
+def srl(rd, rs1, rs2, pc, r_dict):
+    r_dict[rd] = dec_to_bin(rs1 >> int(rs2[-5:], 2))
+    return pc + 4
+
+def or_(rd, rs1, rs2, pc, r_dict):
+    r_dict[rd] = dec_to_bin(rs1 | rs2)
+    return pc + 4
+
+def and_(rd, rs1, rs2, pc, r_dict):
+    r_dict[rd] = dec_to_bin(rs1 & rs2)
+    return pc + 4
+def R(i, pc, r_dict):
+    rd = i[-7:]
+    rs1 = i[-20:-15]
+    rs2 = i[-25:-20]
+    funct3 = i[-15:-12]
+    funct7 = i[:7]
+
+    operations = {
+        ("000", "0000000"): add,
+        ("000", "0100000"): sub,
+        ("010", "0000000"): slt,
+        ("011", "0000000"): sltu,
+        ("100", "0000000"): xor,
+        ("001", "0000000"): sll,
+        ("101", "0000000"): srl,
+        ("110", "0000000"): or_,
+        ("111", "0000000"): and_
+    }
+
+    for func_code, func_op in operations:
+        if (funct3, funct7) == (func_code, func_op):
+            pc = func_op(rd, r_dict[rs1], r_dict[rs2], pc, r_dict)
+            break
+
+    return pc
+
+def lw(rd, rs1, imm, pc, r_dict, mem_dict):
+    rs1 = sext(rs1)
+    rs1 = sgn_con(rs1)
+    imm = sgn_con(imm)
+    r_dict[rd] = mem_dict[rs1 + imm]
+    return pc + 4
+
+def addi(rd, rs1, imm, pc, r_dict):
+    rs1 = sext(rs1)
+    rs1 = sgn_con(rs1)
+    imm = sgn_con(imm)
+    r_dict[rd] = dec_to_bin(rs1 + imm)
+    return pc + 4
+
+def jalr(rd, x6, imm, pc, r_dict):
+    r_dict[rd] = dec_to_bin(pc + 4)
+    x6 = sext(x6)
+    x6 = sgn_con(x6)
+    imm = sgn_con(imm)
+    pc = dec_to_bin(x6 + imm)
+    pc = pc[:-1] + "0"  # Adjusting PC format
+    return pc
+def I(i, pc, r_dict, mem_dict):
+    imm = sext(i[:12])
+    rd = i[-12:-7]
+    rs1 = i[-20:-15]
+    func3 = i[-15:-12]
+    opcode = i[-7:]
+    
+    operations = {
+        ("010", "0000011"): lambda: lw(rd, r_dict[rs1], imm, pc, r_dict, mem_dict),
+        ("000", "0010011"): lambda: addi(rd, r_dict[rs1], imm, pc, r_dict),
+        ("000", "1100111"): lambda: jalr(rd, r_dict[rs1], imm, pc, r_dict)
+    }
+
+    for (func3_val, opcode_val), operation in operations.items():
+        if func3 == func3_val and opcode == opcode_val:
+            pc = operation()
+            break
+
+    return pc
+
+def S_sw(i, pc, r_dict, mem_dict):
+    imm = sext(i[:-25] + i[-12:-7])
+    rs1 = sext(i[-20:-15])
+    rs2 = i[-25:-20]
+
+    r_dict[rs2] = mem_dict[sgn_con(rs1 + imm)]
+    return pc + 4
+
+def lui(rd, imm, pc, r_dict):
+    imm = sgn_con(imm)
+    r_dict[rd] = dec_to_bin(pc + imm)
+    return pc + 4
+
+def aiupc(rd, imm, pc, r_dict):
+    r_dict[rd] = imm
+    return pc + 4
+
+def U(i, pc, r_dict):
+    imm = "000000000000" + i[:-12]
+    rd = i[-12:-7]
+    opcode = i[-7:]
+
+    operations = {
+        "0110111": lambda: lui(rd, imm, pc, r_dict),
+        "0010111": lambda: aiupc(rd, imm, pc, r_dict)
+    }
+
+    for opcode_val, operation in operations.items():
+        if opcode == opcode_val:
+            pc = operation()
+            break
+
+    return pc
+
+def J_jal(i, pc, r_dict):
+    imm = sext(i[0] + i[13:21] + i[12] + i[1:11])
+    rd = i[-12:-7]
+    r_dict[rd] = dec_to_bin(pc + 4)
+    pc += imm
+    return pc
+
+def simulator(r_dict, mem_dict, pc_dict):
+    pc = 0
+    while pc <= 252:
+        inst = pc_dict[pc]
+        opc = inst[-7:]
+        
+        operations = {
+            "0110011": lambda: R(inst, pc, r_dict),
+            "0000011": lambda: I(inst, pc, r_dict, mem_dict),
+            "0010011": lambda: I(inst, pc, r_dict, mem_dict),
+            "1100111": lambda: I(inst, pc, r_dict, mem_dict),
+            "0100011": lambda: S_sw(inst, pc, r_dict, mem_dict),
+            "1100011": lambda: B(inst, pc, r_dict),
+            "0010111": lambda: U(inst, pc, r_dict),
+            "0110111": lambda: U(inst, pc, r_dict),
+            "1101111": lambda: J_jal(inst, pc, r_dict)
+        }
+
+        pc = operations[opc]()
+
+        r_dict["program"] = "0b" + dec_to_bin(pc)
+        
+r_dict = {"program":"0b00000000000000000000000000000000", }
+mem_dict = {}
+
+if len(sys.argv) < 3:
+    sys.exit("Input path and output path: required")
+
+input = sys.argv[1]
+output = sys.argv[2]
+
+if not os.path.exists(input):
+    sys.exit("Doesnt exist")
+
+input_file = open(input, "r")
+with open(input, "r") as input_file:
+    x = input_file.readlines()
+    pc_dict = {}
+    pc = 0
+    for line in x:
+        pc_dict[pc] = line
+        pc += 4
+
+simulator(r_dict, mem_dict, pc_dict)
+
+with open(output, "w") as output_file:
+    for pc, inst in pc_dict.items():
+        output_file.write(f"{pc}: {inst}\n")
+
+sys.exit()
